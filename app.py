@@ -12,6 +12,32 @@ from sklearn.cluster import KMeans
 app = dash.Dash(__name__, title="Traffic Accidents Analysis Dashboard")
 server = app.server  # For deployment
 
+# -----------------------
+# Reusable Style Dictionaries
+# -----------------------
+CARD_STYLE = {
+    'backgroundColor': '#FFFFFF',
+    'borderRadius': '8px',
+    'padding': '20px',
+    'margin': '10px',
+    'boxShadow': '0px 2px 8px rgba(0, 0, 0, 0.1)'
+}
+CARD_HEADING_STYLE = {
+    'textAlign': 'center',
+    'color': '#2c3e50',
+    'marginTop': '0px'
+}
+SECTION_HEADING_STYLE = {
+    'textAlign': 'center',
+    'margin': '10px 0',
+    'color': '#2c3e50'
+}
+INSTRUCTIONS_STYLE = {
+    'textAlign': 'center',
+    'fontStyle': 'italic',
+    'color': '#7f8c8d'
+}
+
 # --------------------------
 # Data processing functions
 # --------------------------
@@ -102,6 +128,7 @@ def get_top_features(loadings, feature_names, n_components, n_top_features=4):
     
     return top_features, top_features_scores, top_indices
 
+
 # --------------------
 # Load and preprocess
 # --------------------
@@ -136,22 +163,43 @@ except Exception as e:
     elbow_idx_dim, elbow_idx_k = 3, 3
     feature_names = []
 
+
 # -------------
 # App Layout
 # -------------
 app.layout = html.Div([
+    # Page title
     html.H1(
         "Traffic Accidents Analysis Dashboard", 
-        style={'textAlign': 'center', 'margin': '20px', 'color': '#2c3e50'}
+        style={
+            'textAlign': 'center',
+            'margin': '20px',
+            'color': '#2c3e50',
+            'fontFamily': 'Arial, sans-serif'
+        }
     ),
 
+    # Short instructions
     html.P(
-        "Use the tabs below to explore PCA results, K-Means clustering, and feature relationships. "
-        "Click on the Scree Plot bars to set the PCA dimensionality, or on the Elbow Plot points to set K. "
-        "All other plots update automatically.",
-        style={'margin': '0 auto', 'maxWidth': '800px', 'textAlign': 'center', 'fontStyle': 'italic'}
+        [
+            "Explore traffic accident data through PCA, K-Means clustering, and feature relationships. ",
+            html.Br(),
+            "• Select the intrinsic dimensionality by clicking on the Scree Plot bars.",
+            html.Br(),
+            "• Select the number of clusters by clicking on points in the Elbow Plot.",
+            html.Br(),
+            "• Experiment with the number of vectors in the Biplot to visualize feature directions."
+        ],
+        style={
+            'margin': '0 auto',
+            'maxWidth': '800px',
+            'textAlign': 'center',
+            'fontStyle': 'italic',
+            'color': '#7f8c8d'
+        }
     ),
     
+    # Tabs for different sections
     dcc.Tabs([
         # ---------------------------
         # Tab 1: PCA & K-Means Plots
@@ -159,32 +207,29 @@ app.layout = html.Div([
         dcc.Tab(label="PCA & K-Means", children=[
             html.Div([
                 html.Div([
-                    html.H3("PCA Eigenvalues (Scree Plot)", 
-                            style={'textAlign': 'center', 'color': '#3498db'}),
+                    html.H3(
+                        "PCA Eigenvalues (Scree Plot)", 
+                        style={**CARD_HEADING_STYLE, 'color': '#3498db'}
+                    ),
                     dcc.Graph(id='scree-plot'),
                     html.P(
                         "Click on a bar to select intrinsic dimensionality.",
-                        style={'textAlign': 'center', 'fontStyle': 'italic'}
+                        style=INSTRUCTIONS_STYLE
                     )
-                ], style={
-                    'width': '48%', 'display': 'inline-block', 
-                    'verticalAlign': 'top', 'padding': '10px',
-                    'boxShadow': '0px 0px 5px #ccc', 'margin': '10px'
-                }),
-                
+                ], style={**CARD_STYLE, 'width': '48%', 'display': 'inline-block'}),
+
                 html.Div([
-                    html.H3("K-Means Clustering (Elbow Plot)", 
-                            style={'textAlign': 'center', 'color': '#e74c3c'}),
+                    html.H3(
+                        "K-Means Clustering (Elbow Plot)", 
+                        style={**CARD_HEADING_STYLE, 'color': '#e74c3c'}
+                    ),
                     dcc.Graph(id='elbow-plot'),
                     html.P(
                         "Click on a point to select K value.",
-                        style={'textAlign': 'center', 'fontStyle': 'italic'}
+                        style=INSTRUCTIONS_STYLE
                     )
-                ], style={
-                    'width': '48%', 'display': 'inline-block', 
-                    'verticalAlign': 'top', 'padding': '10px',
-                    'boxShadow': '0px 0px 5px #ccc', 'margin': '10px'
-                }),
+                ], style={**CARD_STYLE, 'width': '48%', 'display': 'inline-block'}),
+                
             ], style={'textAlign': 'center', 'margin': '20px 0'}),
         ]),
         
@@ -195,12 +240,13 @@ app.layout = html.Div([
             html.Div([
                 html.H3(
                     "PCA Biplot - First Two Principal Components", 
-                    style={'textAlign': 'center', 'color': '#2ecc71'}
+                    style={**CARD_HEADING_STYLE, 'color': '#2ecc71'}
                 ),
                 
-                # New: Add a slider for the number of vectors
+                # Slider for the number of vectors
                 html.Div([
-                    html.Label("Number of Feature Vectors to Display:"),
+                    html.Label("Number of Feature Vectors to Display:", 
+                               style={'fontWeight': 'bold', 'marginRight': '10px'}),
                     dcc.Slider(
                         id='vector-count',
                         min=1,
@@ -215,9 +261,9 @@ app.layout = html.Div([
                 dcc.Graph(id='biplot'),
                 html.P(
                     "Points colored by cluster. Vectors show feature directions.",
-                    style={'textAlign': 'center', 'fontStyle': 'italic'}
+                    style=INSTRUCTIONS_STYLE
                 )
-            ], style={'margin': '30px 0', 'padding': '10px', 'boxShadow': '0px 0px 5px #ccc'})
+            ], style={**CARD_STYLE, 'margin': '30px auto', 'maxWidth': '1000px'})
         ]),
         
         # ----------------------------
@@ -227,7 +273,7 @@ app.layout = html.Div([
             html.Div([
                 html.H3(
                     "Top Features by PCA Loading", 
-                    style={'textAlign': 'center', 'color': '#9b59b6'}
+                    style={**CARD_HEADING_STYLE, 'color': '#9b59b6'}
                 ),
                 dash_table.DataTable(
                     id='pca-loadings-table',
@@ -237,9 +283,10 @@ app.layout = html.Div([
                     ],
                     style_table={'overflowX': 'auto'},
                     style_cell={'textAlign': 'left', 'padding': '10px'},
-                    style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'}
+                    style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
+                    style_data={'backgroundColor': 'white'},
                 )
-            ], style={'margin': '30px 0', 'padding': '10px', 'boxShadow': '0px 0px 5px #ccc'})
+            ], style={**CARD_STYLE, 'margin': '30px auto', 'maxWidth': '800px'})
         ]),
         
         # --------------------------------
@@ -249,22 +296,23 @@ app.layout = html.Div([
             html.Div([
                 html.H3(
                     "Scatterplot Matrix of Top Features", 
-                    style={'textAlign': 'center', 'color': '#f39c12'}
+                    style={**CARD_HEADING_STYLE, 'color': '#f39c12'}
                 ),
                 dcc.Graph(id='scatterplot-matrix'),
                 html.P(
                     "Points colored by cluster ID. Displays relationships between top features. "
                     "Categorical features are jittered for clarity.",
-                    style={'textAlign': 'center', 'fontStyle': 'italic'}
+                    style=INSTRUCTIONS_STYLE
                 )
-            ], style={'margin': '30px 0', 'padding': '10px', 'boxShadow': '0px 0px 5px #ccc'})
+            ], style={**CARD_STYLE, 'margin': '30px auto', 'maxWidth': '1000px'})
         ]),
-    ], style={'maxWidth': '1200px', 'margin': '0 auto'}),
+    ], style={'maxWidth': '1200px', 'margin': '40px auto'}),
     
     # Hidden stores for user selections
     dcc.Store(id='selected-dim', data=elbow_idx_dim if len(explained_variance) > 0 else 3),
     dcc.Store(id='selected-k', data=elbow_idx_k if len(inertia) > 0 else 3),
-])
+], style={'backgroundColor': '#ecf0f1', 'padding': '20px 0'})
+
 
 # -----------------
 # Callback: Scree Plot
@@ -328,7 +376,8 @@ def update_scree_plot(click_data, current_dim):
             dtick=1
         ),
         showlegend=False,
-        clickmode='event+select'
+        clickmode='event+select',
+        plot_bgcolor='#fafafa'
     )
     
     return fig, selected_dim
@@ -393,7 +442,8 @@ def update_elbow_plot(click_data, current_k):
             dtick=1
         ),
         showlegend=False,
-        clickmode='event+select'
+        clickmode='event+select',
+        plot_bgcolor='#fafafa'
     )
     
     return fig, selected_k
@@ -443,7 +493,7 @@ def update_pca_visualizations(selected_dim, selected_k, vector_count):
                 x=pca_result[cluster_mask, 0],
                 y=pca_result[cluster_mask, 1],
                 mode='markers',
-                marker=marker_props | dict(color=colors[cluster_id % len(colors)]),
+                marker={**marker_props, 'color': colors[cluster_id % len(colors)]},
                 name=f'Cluster {cluster_id + 1}'
             ))
     else:
@@ -484,18 +534,17 @@ def update_pca_visualizations(selected_dim, selected_k, vector_count):
             line=dict(color='black', width=1),
             showlegend=False
         ))
-        # 3) Smaller annotation font
         fig.add_annotation(
             x=x_end,
             y=y_end,
             text=feature,
             showarrow=False,
-            font=dict(size=10, color="black"),  # smaller font
+            font=dict(size=10, color="black"),
             bgcolor="rgba(255, 255, 255, 0.7)",
             borderpad=2
         )
     
-    # 4) Add dotted lines at x=0 and y=0
+    # 3) Add dotted lines at x=0 and y=0
     fig.add_shape(
         type="line",
         x0=np.min(pca_result[:, 0]) * 1.1,
@@ -513,7 +562,7 @@ def update_pca_visualizations(selected_dim, selected_k, vector_count):
         line=dict(color="black", width=1, dash="dot"),
     )
     
-    # 5) Increase figure size
+    # 4) Increase figure size & style
     fig.update_layout(
         title='PCA Biplot - First Two Principal Components',
         xaxis_title='PC1',
@@ -522,9 +571,9 @@ def update_pca_visualizations(selected_dim, selected_k, vector_count):
             x=1.05, y=1, xanchor='left', yanchor='top',
             bgcolor='rgba(255, 255, 255, 0.7)'
         ),
-        plot_bgcolor='rgba(240, 240, 240, 0.8)',
+        plot_bgcolor='#fafafa',
         margin=dict(l=40, r=40, t=60, b=40),
-        height=700,   # bigger than before
+        height=700,
         width=1000
     )
     
@@ -595,7 +644,7 @@ def update_scatterplot_matrix(selected_dim, selected_k):
         labels={col: col.replace('_jittered', '') for col in plot_features},
         title="Scatterplot Matrix of Top Features"
     )
-    fig.update_layout(height=700, width=900)
+    fig.update_layout(height=700, width=900, plot_bgcolor='#fafafa')
     fig.update_traces(diagonal_visible=False)
     
     return fig
