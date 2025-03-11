@@ -25,17 +25,23 @@ CARD_STYLE = {
 CARD_HEADING_STYLE = {
     'textAlign': 'center',
     'color': '#2c3e50',
-    'marginTop': '0px'
-}
-SECTION_HEADING_STYLE = {
-    'textAlign': 'center',
-    'margin': '10px 0',
-    'color': '#2c3e50'
+    'marginTop': '0px',
+    'fontFamily': 'Arial, sans-serif'
 }
 INSTRUCTIONS_STYLE = {
     'textAlign': 'center',
     'fontStyle': 'italic',
-    'color': '#7f8c8d'
+    'color': '#7f8c8d',
+    'margin': '5px 0'
+}
+TABLE_HEADER_STYLE = {
+    'backgroundColor': 'rgb(230, 230, 230)', 
+    'fontWeight': 'bold',
+    'textAlign': 'center'
+}
+TABLE_CELL_STYLE = {
+    'textAlign': 'left',
+    'padding': '10px'
 }
 
 # --------------------------
@@ -43,36 +49,26 @@ INSTRUCTIONS_STYLE = {
 # --------------------------
 def prepare_data(df):
     """Prepare data for analysis by selecting and processing relevant columns."""
-    # Drop the last two columns if needed
     if len(df.columns) >= 2:
         df = df.drop(df.columns[-2:], axis=1)
     
-    # Select only numerical columns
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     print(f"Found {len(numeric_cols)} numerical columns")
     
-    # Drop rows with missing values
     df_clean = df.dropna()
     print(f"After dropping missing values: {df_clean.shape[0]} rows remain")
     
-    # Select only numerical columns for analysis
     data_numeric = df_clean[numeric_cols].copy()
     return data_numeric, numeric_cols
 
 def perform_pca(df):
     """Perform PCA on the dataframe with proper data cleaning."""
-    # Scale the data
     scaler = StandardScaler()
     scaled_data = scaler.fit_transform(df)
     
-    # Perform PCA
     pca = PCA()
     pca_result = pca.fit_transform(scaled_data)
-    
-    # Get the explained variance ratio
     explained_variance = pca.explained_variance_ratio_
-    
-    # Get the loadings
     loadings = pca.components_
     
     return pca, pca_result, explained_variance, loadings, scaled_data
@@ -93,36 +89,27 @@ def find_elbow_point(values):
     if len(values) <= 2:
         return 1
     
-    # Calculate differences (first derivative)
     y_diff = np.diff(values)
     
     # For scree plot (decreasing values)
     if values[0] > values[-1]:
-        # Calculate cumulative variance
         cum_var = np.cumsum(values)
-        # Find index where we reach ~70% explained variance
         idx = np.argmax(cum_var >= 0.7 * cum_var[-1]) + 1
     else:
-        # For kmeans (increasing values), find where curve begins to flatten
+        # For kmeans (increasing values)
         y_diff2 = np.diff(y_diff)
         idx = np.argmax(np.abs(y_diff2)) + 2
     
-    # Ensure the index is within bounds
     return min(max(1, idx), len(values) - 1)
 
 def get_top_features(loadings, feature_names, n_components, n_top_features=4):
     """Get the top features based on squared sum of PCA loadings."""
-    # Ensure n_components is within bounds
     n_components = min(n_components, loadings.shape[0])
-    
-    # Calculate squared sum of loadings for each feature
     squared_loadings = loadings[:n_components, :]**2
     sum_squared_loadings = np.sum(squared_loadings, axis=0)
     
-    # Get the indices of top features
     top_indices = np.argsort(sum_squared_loadings)[::-1][:n_top_features]
     
-    # Get the feature names and their scores
     top_features = [feature_names[i] for i in top_indices]
     top_features_scores = sum_squared_loadings[top_indices]
     
@@ -138,16 +125,10 @@ try:
     df = pd.read_csv(file_path)
     print(f"Data loaded successfully: {df.shape[0]} rows, {df.shape[1]} columns")
     
-    # Prepare data
     df_clean, feature_names = prepare_data(df)
-    
-    # Perform PCA
     pca, pca_result, explained_variance, loadings, scaled_data = perform_pca(df_clean)
-    
-    # Perform K-means clustering
     inertia, kmeans_models = perform_kmeans(scaled_data)
     
-    # Find elbow points
     elbow_idx_dim = find_elbow_point(explained_variance)
     elbow_idx_k = find_elbow_point(inertia)
     
@@ -155,7 +136,6 @@ try:
     
 except Exception as e:
     print(f"Error processing data: {e}")
-    # Create placeholder data if loading fails
     df = pd.DataFrame()
     df_clean = pd.DataFrame()
     pca, pca_result, explained_variance, loadings, scaled_data = None, None, [], [], None
@@ -168,27 +148,25 @@ except Exception as e:
 # App Layout
 # -------------
 app.layout = html.Div([
-    # Page title
     html.H1(
         "Traffic Accidents Analysis Dashboard", 
         style={
             'textAlign': 'center',
-            'margin': '20px',
+            'marginTop': '20px',
             'color': '#2c3e50',
             'fontFamily': 'Arial, sans-serif'
         }
     ),
 
-    # Short instructions
     html.P(
         [
             "Explore traffic accident data through PCA, K-Means clustering, and feature relationships. ",
             html.Br(),
-            "• Select the intrinsic dimensionality by clicking on the Scree Plot bars.",
+            "• Click on the Scree Plot bars to select dimensionality. ",
             html.Br(),
-            "• Select the number of clusters by clicking on points in the Elbow Plot.",
+            "• Click on the Elbow Plot points to select K. ",
             html.Br(),
-            "• Experiment with the number of vectors in the Biplot to visualize feature directions."
+            "• Move the slider in Biplot to adjust the number of feature vectors."
         ],
         style={
             'margin': '0 auto',
@@ -199,7 +177,6 @@ app.layout = html.Div([
         }
     ),
     
-    # Tabs for different sections
     dcc.Tabs([
         # ---------------------------
         # Tab 1: PCA & K-Means Plots
@@ -208,8 +185,8 @@ app.layout = html.Div([
             html.Div([
                 html.Div([
                     html.H3(
-                        "PCA Eigenvalues (Scree Plot)", 
-                        style={**CARD_HEADING_STYLE, 'color': '#3498db'}
+                        "Scree Plot (PCA Explained Variance)",
+                        style=CARD_HEADING_STYLE
                     ),
                     dcc.Graph(id='scree-plot'),
                     html.P(
@@ -220,8 +197,8 @@ app.layout = html.Div([
 
                 html.Div([
                     html.H3(
-                        "K-Means Clustering (Elbow Plot)", 
-                        style={**CARD_HEADING_STYLE, 'color': '#e74c3c'}
+                        "K-Means Elbow Plot",
+                        style=CARD_HEADING_STYLE
                     ),
                     dcc.Graph(id='elbow-plot'),
                     html.P(
@@ -239,20 +216,21 @@ app.layout = html.Div([
         dcc.Tab(label="Biplot", children=[
             html.Div([
                 html.H3(
-                    "PCA Biplot - First Two Principal Components", 
-                    style={**CARD_HEADING_STYLE, 'color': '#2ecc71'}
+                    "PCA Biplot (PC1 vs PC2)", 
+                    style=CARD_HEADING_STYLE
                 ),
                 
-                # Slider for the number of vectors
                 html.Div([
-                    html.Label("Number of Feature Vectors to Display:", 
-                               style={'fontWeight': 'bold', 'marginRight': '10px'}),
+                    html.Label(
+                        "Number of Feature Vectors to Display:",
+                        style={'fontWeight': 'bold', 'marginRight': '10px'}
+                    ),
                     dcc.Slider(
                         id='vector-count',
                         min=1,
                         max=10,
                         step=1,
-                        value=6,  # default number of vectors
+                        value=6,
                         marks={i: str(i) for i in range(1, 11)},
                         tooltip={"placement": "bottom"}
                     )
@@ -273,7 +251,7 @@ app.layout = html.Div([
             html.Div([
                 html.H3(
                     "Top Features by PCA Loading", 
-                    style={**CARD_HEADING_STYLE, 'color': '#9b59b6'}
+                    style=CARD_HEADING_STYLE
                 ),
                 dash_table.DataTable(
                     id='pca-loadings-table',
@@ -282,9 +260,8 @@ app.layout = html.Div([
                         {'name': 'Importance Score', 'id': 'score'},
                     ],
                     style_table={'overflowX': 'auto'},
-                    style_cell={'textAlign': 'left', 'padding': '10px'},
-                    style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
-                    style_data={'backgroundColor': 'white'},
+                    style_header=TABLE_HEADER_STYLE,
+                    style_cell=TABLE_CELL_STYLE
                 )
             ], style={**CARD_STYLE, 'margin': '30px auto', 'maxWidth': '800px'})
         ]),
@@ -295,13 +272,12 @@ app.layout = html.Div([
         dcc.Tab(label="Scatterplot Matrix", children=[
             html.Div([
                 html.H3(
-                    "Scatterplot Matrix of Top Features", 
-                    style={**CARD_HEADING_STYLE, 'color': '#f39c12'}
+                    "Scatterplot Matrix (Top 4 PCA Features)", 
+                    style=CARD_HEADING_STYLE
                 ),
                 dcc.Graph(id='scatterplot-matrix'),
                 html.P(
-                    "Points colored by cluster ID. Displays relationships between top features. "
-                    "Categorical features are jittered for clarity.",
+                    "Points colored by cluster ID. Displays relationships between top features.",
                     style=INSTRUCTIONS_STYLE
                 )
             ], style={**CARD_STYLE, 'margin': '30px auto', 'maxWidth': '1000px'})
@@ -311,8 +287,7 @@ app.layout = html.Div([
     # Hidden stores for user selections
     dcc.Store(id='selected-dim', data=elbow_idx_dim if len(explained_variance) > 0 else 3),
     dcc.Store(id='selected-k', data=elbow_idx_k if len(inertia) > 0 else 3),
-], style={'backgroundColor': '#ecf0f1', 'padding': '20px 0'})
-
+], style={'backgroundColor': '#f7f7f7', 'padding': '20px 0'})
 
 # -----------------
 # Callback: Scree Plot
@@ -325,41 +300,38 @@ app.layout = html.Div([
 )
 def update_scree_plot(click_data, current_dim):
     if len(explained_variance) == 0:
-        # Return empty plot if no data
         return {}, current_dim
     
-    # Determine selected dimension
     selected_dim = current_dim
     if click_data is not None:
         selected_dim = click_data['points'][0]['pointNumber'] + 1
     
-    # Create scree plot
     fig = go.Figure()
-    
-    # Limit to first 20 components for readability
     max_components = min(20, len(explained_variance))
-    for i, var in enumerate(explained_variance[:max_components]):
-        if i + 1 == selected_dim:
-            fig.add_trace(go.Bar(
-                x=[i+1], y=[var],
-                marker_color='rgba(50, 171, 96, 0.7)',
-                name=f'PC{i+1}'
-            ))
-        else:
-            fig.add_trace(go.Bar(
-                x=[i+1], y=[var],
-                marker_color='rgba(55, 83, 109, 0.5)',
-                name=f'PC{i+1}'
-            ))
     
-    # Add cumulative variance line
+    # Define colors for bars
+    default_color = 'rgba(58, 114, 176, 0.8)'  # a nice blue
+    highlight_color = 'rgba(255, 127, 14, 0.8)'  # an orange highlight
+    
+    for i, var in enumerate(explained_variance[:max_components]):
+        # Highlight the selected dimension
+        color = highlight_color if (i+1) == selected_dim else default_color
+        fig.add_trace(go.Bar(
+            x=[i+1], 
+            y=[var],
+            marker_color=color,
+            name=f'PC{i+1}'
+        ))
+    
+    # Cumulative line
     cumulative = np.cumsum(explained_variance[:max_components])
     fig.add_trace(go.Scatter(
         x=list(range(1, max_components + 1)),
         y=cumulative,
         mode='lines+markers',
-        name='Cumulative',
-        line=dict(color='red')
+        marker=dict(color='rgba(214, 39, 40, 0.8)'),
+        line=dict(color='rgba(214, 39, 40, 0.5)'),
+        name='Cumulative'
     ))
     
     fig.update_layout(
@@ -375,9 +347,13 @@ def update_scree_plot(click_data, current_dim):
             tick0=1,
             dtick=1
         ),
-        showlegend=False,
+        barmode='group',
         clickmode='event+select',
-        plot_bgcolor='#fafafa'
+        legend=dict(
+            x=1.02, y=1,
+            bordercolor='#ccc',
+            borderwidth=1
+        )
     )
     
     return fig, selected_dim
@@ -393,47 +369,38 @@ def update_scree_plot(click_data, current_dim):
 )
 def update_elbow_plot(click_data, current_k):
     if len(inertia) == 0:
-        # Return empty plot if no data
         return {}, current_k
     
-    # Determine selected k
     selected_k = current_k
     if click_data is not None:
         selected_k = click_data['points'][0]['x']
     
-    # Create elbow plot
     fig = go.Figure()
-    
-    # Create list of k values
     k_values = list(range(1, len(inertia) + 1))
     
-    # Plot each point
+    default_marker = dict(size=8, color='rgba(31, 119, 180, 0.8)')
+    highlight_marker = dict(size=12, color='rgba(255, 127, 14, 1)')
+    
     for k, inert in zip(k_values, inertia):
-        if k == selected_k:
-            fig.add_trace(go.Scatter(
-                x=[k], y=[inert],
-                mode='markers',
-                marker=dict(size=12, color='red'),
-                name=f'K={k}'
-            ))
-        else:
-            fig.add_trace(go.Scatter(
-                x=[k], y=[inert],
-                mode='markers',
-                marker=dict(size=8, color='blue'),
-                name=f'K={k}'
-            ))
+        # Use highlight color for selected k
+        marker_style = highlight_marker if k == selected_k else default_marker
+        fig.add_trace(go.Scatter(
+            x=[k], y=[inert],
+            mode='markers',
+            marker=marker_style,
+            name=f'K={k}'
+        ))
     
     # Add line connecting points
     fig.add_trace(go.Scatter(
         x=k_values, y=inertia,
         mode='lines',
-        line=dict(color='gray'),
+        line=dict(color='rgba(31, 119, 180, 0.5)'),
         showlegend=False
     ))
     
     fig.update_layout(
-        title='K-Means Elbow Plot - Inertia vs. Number of Clusters',
+        title='K-Means Elbow Plot',
         xaxis_title='Number of Clusters (K)',
         yaxis_title='Inertia (Within-Cluster Sum of Squares)',
         xaxis=dict(
@@ -441,9 +408,12 @@ def update_elbow_plot(click_data, current_k):
             tick0=1,
             dtick=1
         ),
-        showlegend=False,
         clickmode='event+select',
-        plot_bgcolor='#fafafa'
+        legend=dict(
+            x=1.02, y=1,
+            bordercolor='#ccc',
+            borderwidth=1
+        )
     )
     
     return fig, selected_k
@@ -460,44 +430,36 @@ def update_elbow_plot(click_data, current_k):
 )
 def update_pca_visualizations(selected_dim, selected_k, vector_count):
     if len(loadings) == 0 or len(feature_names) == 0:
-        # Return empty data if no data
         return [], {}
     
-    # Get top features based on loadings
+    # Update table
     top_features, top_scores, top_indices = get_top_features(
         loadings, feature_names, selected_dim, n_top_features=4
     )
-    
-    # Create table data
     table_data = [
         {'feature': feature, 'score': f"{score:.4f}"}
         for feature, score in zip(top_features, top_scores)
     ]
     
-    # Create biplot figure
     fig = go.Figure()
+    marker_props = dict(size=6, opacity=0.7)
     
-    # 1) Make scatter points smaller & semi-transparent
-    marker_props = dict(size=5, opacity=0.6)
-    
-    # If K > 1, color by cluster
+    # Color clusters if K>1
     if selected_k > 1 and kmeans_models and selected_k in kmeans_models:
         clusters = kmeans_models[selected_k].predict(scaled_data)
-        colors = px.colors.qualitative.D3  # Distinct color scheme
+        # A few vibrant colors (can add more for higher K)
+        palette = px.colors.qualitative.Safe  # or "Bold", "Pastel", etc.
         
         for cluster_id in range(selected_k):
             cluster_mask = (clusters == cluster_id)
-            if not any(cluster_mask):
-                continue
             fig.add_trace(go.Scatter(
                 x=pca_result[cluster_mask, 0],
                 y=pca_result[cluster_mask, 1],
                 mode='markers',
-                marker={**marker_props, 'color': colors[cluster_id % len(colors)]},
-                name=f'Cluster {cluster_id + 1}'
+                marker={**marker_props, 'color': palette[cluster_id % len(palette)]},
+                name=f'Cluster {cluster_id}'
             ))
     else:
-        # Simple scatter if no clustering
         fig.add_trace(go.Scatter(
             x=pca_result[:, 0],
             y=pca_result[:, 1],
@@ -506,13 +468,10 @@ def update_pca_visualizations(selected_dim, selected_k, vector_count):
             name='Data Points'
         ))
     
-    # 2) Add vectors, limited by 'vector_count'
-    #    Sort by magnitude of loadings for PC1 & PC2
+    # Add vectors (up to vector_count)
     feature_importance = np.sqrt(loadings[0, :]**2 + loadings[1, :]**2)
-    # Indices of top 'vector_count' features
     top_indices_vec = np.argsort(feature_importance)[::-1][:vector_count]
     
-    # Determine scaling factor
     x_range = np.max(pca_result[:, 0]) - np.min(pca_result[:, 0])
     y_range = np.max(pca_result[:, 1]) - np.min(pca_result[:, 1])
     axis_range = max(x_range, y_range)
@@ -523,7 +482,7 @@ def update_pca_visualizations(selected_dim, selected_k, vector_count):
         x_end = loadings[0, i] * scale_factor
         y_end = loadings[1, i] * scale_factor
         
-        # If vector is very small, skip
+        # If vector is too small, skip
         if np.sqrt(x_end**2 + y_end**2) < 0.05 * scale_factor:
             continue
         
@@ -535,23 +494,22 @@ def update_pca_visualizations(selected_dim, selected_k, vector_count):
             showlegend=False
         ))
         fig.add_annotation(
-            x=x_end,
-            y=y_end,
+            x=x_end, y=y_end,
             text=feature,
             showarrow=False,
             font=dict(size=10, color="black"),
-            bgcolor="rgba(255, 255, 255, 0.7)",
-            borderpad=2
+            bgcolor="rgba(255, 255, 255, 0.6)",
+            borderpad=3
         )
     
-    # 3) Add dotted lines at x=0 and y=0
+    # Dotted lines at x=0 and y=0
     fig.add_shape(
         type="line",
         x0=np.min(pca_result[:, 0]) * 1.1,
         y0=0,
         x1=np.max(pca_result[:, 0]) * 1.1,
         y1=0,
-        line=dict(color="black", width=1, dash="dot"),
+        line=dict(color="gray", width=1, dash="dot"),
     )
     fig.add_shape(
         type="line",
@@ -559,25 +517,23 @@ def update_pca_visualizations(selected_dim, selected_k, vector_count):
         y0=np.min(pca_result[:, 1]) * 1.1,
         x1=0,
         y1=np.max(pca_result[:, 1]) * 1.1,
-        line=dict(color="black", width=1, dash="dot"),
+        line=dict(color="gray", width=1, dash="dot"),
     )
     
-    # 4) Increase figure size & style
     fig.update_layout(
-        title='PCA Biplot - First Two Principal Components',
+        title='PCA Biplot (PC1 vs PC2)',
         xaxis_title='PC1',
         yaxis_title='PC2',
         legend=dict(
             x=1.05, y=1, xanchor='left', yanchor='top',
-            bgcolor='rgba(255, 255, 255, 0.7)'
+            bgcolor='rgba(255, 255, 255, 0.6)'
         ),
-        plot_bgcolor='#fafafa',
-        margin=dict(l=40, r=40, t=60, b=40),
-        height=700,
-        width=1000
+        margin=dict(l=50, r=50, t=60, b=50),
+        height=650,
+        width=900
     )
     
-    # Ensure symmetrical axes
+    # Make axes symmetrical
     max_range = max(
         abs(np.min(pca_result[:, 0])), abs(np.max(pca_result[:, 0])),
         abs(np.min(pca_result[:, 1])), abs(np.max(pca_result[:, 1]))
@@ -599,15 +555,12 @@ def update_scatterplot_matrix(selected_dim, selected_k):
     if df_clean.empty or len(loadings) == 0:
         return {}
     
-    # Get top features
     top_features, _, top_indices = get_top_features(
         loadings, feature_names, selected_dim, n_top_features=4
     )
     
-    # Create a dataframe with just these features
     top_data = df_clean.iloc[:, top_indices].copy()
     
-    # Add cluster information if k > 1
     if selected_k > 1 and kmeans_models and selected_k in kmeans_models:
         clusters = kmeans_models[selected_k].predict(scaled_data)
         top_data['Cluster'] = clusters
@@ -615,36 +568,42 @@ def update_scatterplot_matrix(selected_dim, selected_k):
     else:
         color_col = None
     
-    # Check for categorical variables and jitter them
+    # Jitter for categorical-like features
     categorical_features = []
     for feature in top_features:
-        # If a feature has a small number of unique values, treat it as categorical
         if len(top_data[feature].unique()) < 10:
             categorical_features.append(feature)
-            # Convert to category codes if needed, then add jitter
             if not pd.api.types.is_numeric_dtype(top_data[feature]):
                 top_data[feature] = top_data[feature].astype('category').cat.codes
-            jitter_amount = 0.2
             top_data[f"{feature}_jittered"] = top_data[feature] + np.random.normal(
-                0, jitter_amount, size=len(top_data)
+                0, 0.2, size=len(top_data)
             )
     
-    # Build list of plot dimensions
-    plot_features = []
-    for feature in top_features:
-        if feature in categorical_features:
-            plot_features.append(f"{feature}_jittered")
-        else:
-            plot_features.append(feature)
+    plot_features = [
+        f"{feat}_jittered" if feat in categorical_features else feat 
+        for feat in top_features
+    ]
     
     fig = px.scatter_matrix(
         top_data,
         dimensions=plot_features if categorical_features else top_features,
         color=color_col,
         labels={col: col.replace('_jittered', '') for col in plot_features},
-        title="Scatterplot Matrix of Top Features"
+        title="Scatterplot Matrix (Top 4 PCA Features)"
     )
-    fig.update_layout(height=700, width=900, plot_bgcolor='#fafafa')
+    
+    fig.update_layout(
+        height=650,
+        width=900,
+        margin=dict(l=40, r=40, t=60, b=40),
+        legend=dict(
+            x=1.02, y=1,
+            bordercolor='#ccc',
+            borderwidth=1
+        )
+    )
+    
+    # Turn off diagonal histograms if desired
     fig.update_traces(diagonal_visible=False)
     
     return fig
